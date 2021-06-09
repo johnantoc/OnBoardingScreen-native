@@ -5,7 +5,7 @@ This project is part of my learning react native Animated api.
 
 React Native - powered Android application.
 
-##Preview
+## Preview
 
 ![](onboard.gif)
 
