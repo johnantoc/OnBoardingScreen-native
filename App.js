@@ -11,46 +11,52 @@ import {
   View,
   Image,
   Animated,
+  Pressable,
   useWindowDimensions,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const backGroundColors = ['#D3A518', '#646b88', '#39405B', '#101a31'];
-const data = [
+// Onboarding Slides.
+const slides = [
   {
     key: 'OnBoardOne',
     title: 'Need Materials?',
     text: 'Select needed items from list and order it with your favourite shop or nearby shop',
     image: require('./src/assets/screwdriverandspanner.png'),
+    backGroundColor: '#575E6E',
   },
   {
     key: 'OnBoardTwo',
     title: 'Need Tradesman?',
     text: 'Search for nearby technicians and laborers',
     image: require('./src/assets/tools.png'),
+    backGroundColor: '#3F475A',
   },
   {
     key: 'OnBoardThree',
     title: 'Need Material Estimate?',
     text: 'Select the number of materials and get estimate with just a click',
     image: require('./src/assets/screwdriver.png'),
+    backGroundColor: '#273045',
   },
   {
     key: 'OnBoardFour',
-    title: 'Find any services near you',
-    text: 'Select services from a vast list',
+    title: 'Find services near you',
+    text: 'Select services from a variety of vendors',
     image: require('./src/assets/paint-brush.png'),
+    backGroundColor: '#101a31',
   },
 ];
 
 const Circles = ({scrollX, width}) => (
   <View style={styles.circleContainer}>
-    {data.map((_, index) => {
-      const scale = scrollX.interpolate({
+    {slides.map((_, index) => {
+      const scale = scrollX.current?.interpolate({
         inputRange: [(index - 1) * width, index * width, (index + 1) * width],
         outputRange: [1, 1.5, 1],
         extrapolate: 'clamp',
       });
-      const opacity = scrollX.interpolate({
+      const opacity = scrollX.current?.interpolate({
         inputRange: [(index - 1) * width, index * width, (index + 1) * width],
         outputRange: [0.4, 1, 0.4],
         extrapolate: 'clamp',
@@ -64,7 +70,7 @@ const Circles = ({scrollX, width}) => (
             {
               transform: [
                 {
-                  scale,
+                  scale: scale ? scale : 1,
                 },
               ],
             },
@@ -75,25 +81,40 @@ const Circles = ({scrollX, width}) => (
   </View>
 );
 
-const BackGround = ({scrollX, width}) => {
-  const backgroundColor = scrollX.interpolate({
-    inputRange: backGroundColors.map((_, index) => index * width),
-    outputRange: backGroundColors.map(bg => bg),
+const BackGround = ({scrollX, inputRange}) => {
+  const backgroundColor = scrollX.current?.interpolate({
+    inputRange: inputRange,
+    outputRange: slides.map(slide => slide.backGroundColor),
   });
   return (
     <Animated.View style={[StyleSheet.absoluteFillObject, {backgroundColor}]} />
   );
 };
 
-const Square = ({scrollX, width, height}) => {
+const Square = ({scrollX, width}) => {
   const sqRotValue = Animated.modulo(
-    Animated.divide(Animated.modulo(scrollX, width), new Animated.Value(width)),
+    Animated.divide(
+      Animated.modulo(scrollX.current || 0, width),
+      new Animated.Value(width),
+    ),
     1,
   );
 
   const rotate = sqRotValue.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['45deg', '-45deg', '-45deg'],
+    inputRange: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    outputRange: [
+      '45deg',
+      '36deg',
+      '27deg',
+      '18deg',
+      '9deg',
+      '0deg',
+      '-9deg',
+      '-18deg',
+      '-27deg',
+      '-36deg',
+      '-45deg',
+    ],
   });
 
   return (
@@ -113,11 +134,35 @@ const Square = ({scrollX, width, height}) => {
   );
 };
 
-const App = () => {
-  const {width, height} = useWindowDimensions();
-  const scrollX = useRef(new Animated.Value(0)).current;
+const DoneButton = ({scrollX, width, onDone, inputRange}) => {
+  const translateY = scrollX.current?.interpolate({
+    inputRange: inputRange,
+    outputRange: slides.map((_, index) =>
+      index === slides.length - 1 ? 0 : width,
+    ),
+  });
+  return (
+    <Animated.View
+      style={[
+        styles.buttonCircleContainer,
+        {transform: [{translateY: translateY ? translateY : 0}]},
+      ]}>
+      <Pressable
+        onPress={onDone}
+        style={[styles.buttonCircle]}
+        android_ripple={{color: '#000', radius: width}}>
+        <Icon name="check" color="#39405B" size={24} />
+      </Pressable>
+    </Animated.View>
+  );
+};
 
-  const renderScreens = ({item, index}) => {
+const App = () => {
+  const {width} = useWindowDimensions();
+  const scrollX = useRef(new Animated.Value(0));
+  const inputRange = slides.map((_, index) => index * width);
+
+  const renderScreens = ({item}) => {
     return (
       <View style={[styles.screen, {width}]} key={item.id}>
         <View style={styles.imageContainer}>
@@ -134,16 +179,18 @@ const App = () => {
     );
   };
 
+  const onDone = () => {};
+
   return (
     <SafeAreaView style={styles.container}>
-      <BackGround scrollX={scrollX} width={width} />
-      <Square scrollX={scrollX} width={width} height={height} />
+      <BackGround scrollX={scrollX} inputRange={inputRange} />
+      <Square scrollX={scrollX} width={width} />
       <Animated.FlatList
-        data={data}
+        data={slides}
         horizontal
         pagingEnabled
         onScroll={Animated.event(
-          [{nativeEvent: {contentOffset: {x: scrollX}}}],
+          [{nativeEvent: {contentOffset: {x: scrollX.current}}}],
           {useNativeDriver: false},
         )}
         scrollEventThrottle={32}
@@ -153,6 +200,12 @@ const App = () => {
         renderItem={renderScreens}
       />
       <Circles scrollX={scrollX} width={width} />
+      <DoneButton
+        scrollX={scrollX}
+        width={width}
+        onDone={onDone}
+        inputRange={inputRange}
+      />
     </SafeAreaView>
   );
 };
@@ -185,7 +238,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   square: {
-    backgroundColor: '#fff1c9',
+    backgroundColor: '#f7f7f7',
     borderRadius: 80,
     position: 'absolute',
   },
@@ -196,6 +249,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     margin: 10,
     backgroundColor: '#fff',
+  },
+  buttonCircleContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  buttonCircle: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#03DAC6',
   },
 });
 
